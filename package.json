@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
+    "serve": "vue-cli-service serve --port 27004",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint"
   },
@@ -15,7 +15,8 @@
     "popper.js": "^1.16.1",
     "vue": "^2.6.11",
     "vue-moment": "^4.1.0",
-    "vue-router": "^3.4.9"
+    "vue-router": "^3.4.9",
+    "vuedraggable": "^2.24.3"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.0",

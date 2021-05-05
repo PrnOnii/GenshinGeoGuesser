@@ -15,6 +15,9 @@
                     <li class="nav-item">
                         <router-link class="nav-link" :to="{ name: 'home'}">Home</router-link>
                     </li>
+                    <li>
+                        <router-link class="nav-link" :to="{ name: 'artifactSnapper'}">Artifact Snapper</router-link>
+                    </li>
                 </ul>
             </div>
         </nav>

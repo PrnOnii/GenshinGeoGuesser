@@ -1,4 +1,4 @@
-# result-page
+# Genshin GeoGuesser
 
 ## Project setup
 ```
