@@ -30,10 +30,10 @@
 </template>
 
 <script>
-const X = 1293;
-const Y = 119;
-const WIDTH = 492;
-const HEIGHT = 842;
+const XRATIO = 1293 / 1920;
+const YRATIO = 119 / 1080;
+const WIDTHRATIO = 492 / 1920;
+const HEIGHTRATIO = 842 / 1080;
 
 import draggable from 'vuedraggable';
 
@@ -46,6 +46,8 @@ export default {
     return {
       images: [],
       imageFused: false,
+      width: 0,
+      height: 0,
     }
   },
   computed: {
@@ -77,19 +79,26 @@ export default {
       var imageObj = new Image();
       imageObj.src = file.image;
 
-      canvas.width = WIDTH;
-      canvas.height = HEIGHT;
 
       imageObj.onload = function () {
-          context.drawImage(imageObj, X, Y, WIDTH, HEIGHT, 0, 0, WIDTH, HEIGHT);
-          self.images.push({
-            id: file.id,
-            name: file.name,
-            canvas: context.canvas
-          });
-          if (self.fileProccessed === 5) {
-            self.initGrid();
-          }
+        let x = this.width * XRATIO;
+        let y = this.height * YRATIO;
+        let width = this.width * WIDTHRATIO;
+        let height = this.height * HEIGHTRATIO;
+        self.width = width;
+        self.height = height;
+        canvas.width = width;
+        canvas.height = height;
+
+        context.drawImage(imageObj, x, y, width, height, 0, 0, width, height);
+        self.images.push({
+          id: file.id,
+          name: file.name,
+          canvas: context.canvas
+        });
+        if (self.fileProccessed === 5) {
+          self.initGrid();
+        }
       };
     },
     initGrid() {
@@ -99,11 +108,11 @@ export default {
       var canvas = document.createElement('canvas');
       var context = canvas.getContext('2d');
 
-      canvas.width = 5 * WIDTH;
-      canvas.height = HEIGHT;
+      canvas.width = 5 * this.width;
+      canvas.height = this.height;
 
       for (let i = 0; i < this.images.length; i++) {
-        context.drawImage(this.images[i].canvas, WIDTH * i, 0);
+        context.drawImage(this.images[i].canvas, this.width * i, 0);
       }
       this.imageFused = true;
       document.getElementById('resultIMG').src = canvas.toDataURL("image/png");
