@@ -4,7 +4,6 @@
       {{ alertMessage }}
     </div>
     <h1 class="mt-3">Welcome to Genshin Impact GeoGuesser</h1>
-    <button v-on:click="test">Test</button>
     <div class="row">
       <div class="col-3 text-left">
         <h3>Players : </h3>
@@ -13,10 +12,12 @@
             <i class="fas fa-user"></i> {{ player.name }} - Score : {{ player.score }}
           </li>
         </ul>
-        <div>
-          Add a new player :
-          <input type="text" v-on:keypress.enter="addPlayer($event.target)">
+        <div class="col-12">
+          Join Game :
+          <input v-model="name" type="text" v-on:keypress.enter="addPlayer(false)">
         </div>
+        <button v-on:click="addPlayer(false)" class="mr-2 mt-2">Join as Player</button>
+        <button v-on:click="addPlayer(true)" v-if="!hasGM">Join as Game Master</button>
       </div>
       <div class="col">
         <h3>Submit scores</h3>
@@ -116,14 +117,24 @@ export default {
     return {
       // WebSocket
       ws: null,
+      timerId: null,
+
+      // Own info
+      name: "",
+      playerId: 0,
+
+      // Room info
+      players: [],
+      answers: [],
+
+      // HTML & status
+      hasGM: false,
 
       // Gameplay
       alertMessage: "",
       newPlayer: "",
-      players: [],
       submitting: false,
       showResults: false,
-      answers: [],
       goodAnswer: {x: 0, y: 0},
       results: [],
       colors: [
@@ -137,31 +148,71 @@ export default {
     }
   },
   created() {
+    const self = this;
     console.log("Starting Connection to WebSocket Server");
     // this.ws = new WebSocket("wss://genshin-geoguesser-websocket.herokuapp.com/");
     this.ws = new WebSocket("ws://localhost:3000");
 
     this.ws.onopen = function (event) {
-      console.log(event);
-      console.log("Successfully connected to WebSocket");
+      console.log("Successfully connected to WebSocket.", event);
+      self.keepAlive();
     }
 
     this.ws.onmessage = function (event) {
-      console.log(event.data);
+      self.handleMessage(event);
+    }
+
+    this.ws.onclose = function () {
+      console.log("Closed connection with WebSocket.");
     }
   },
   mounted() {
-    },
+  },
   methods: {
-    test() {
-      console.log(this.ws);
-      this.ws.send(JSON.stringify({ action: "increment" }));
+    // WebSocket
+    handleMessage(event) {
+      const data = JSON.parse(event.data);
+      console.log(data);
+      switch (data.action) {
+        case "STATUS_INIT":
+          this.setupStatus(data.data);
+          break;
+        case "KEEP_ALIVE":
+          break;
+        case "HAS_GM":
+          this.hasGM = true;
+          break;
+        case "UPDATE_PLAYERS":
+          this.updatePlayers(data.data);
+          break;
+        case "UPDATE_PLAYER_ID":
+          this.updatePlayers(data.data);
+          this.playerId = data.data.find(pl => pl.name == this.name).id;
+          break;
+        default:
+          console.log("Unkown Websocket action...", data);
+      }
     },
-    addPlayer(e) {
-      this.players.push({
-        name: e.value,
-        score: 0
-      });
+    setupStatus(data) {
+      this.hasGM = data.hasGM;
+    },
+    keepAlive() {
+      if (this.ws.readyState == WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({action: "KEEP_ALIVE"}));
+      }
+      this.timerId = setTimeout(this.keepAlive, 60000);
+    },
+    addPlayer(isGM) {
+      this.ws.send(JSON.stringify({
+        action: "ADD_PLAYER",
+        name: this.name,
+        isGM: isGM
+      }));
+      this.hasGM = isGM;
+      // this.players.push({
+      //   name: this.name,
+      //   score: 0
+      // });
       this.answers.push({
         x: null,
         showX: 0,
@@ -169,8 +220,18 @@ export default {
         showY: 0,
         score: 0
       });
-      e.value = "";
       this.alertMessage = "";
+    },
+    updatePlayers(players) {
+      this.players = players;
+      this.playerId = players.find(pl => pl.name == this.name).id;
+      this.answers.push({
+        x: null,
+        showX: 0,
+        y: null,
+        showY: 0,
+        score: 0
+      });
     },
     startSubmitting() {
       if (this.players.length == 0) {
