@@ -4,6 +4,7 @@
       {{ alertMessage }}
     </div>
     <h1 class="mt-3">Welcome to Genshin Impact GeoGuesser</h1>
+    <button v-on:click="resetValues()">Reset</button>
     <div class="row">
       <div class="col-3 text-left">
         <h3>Players : </h3>
@@ -88,19 +89,6 @@
     <div class="row" v-show="showResults">
       <div class="col text-center mt-5">
         <img width="70%" src="https://i.imgur.com/TdI4Bm1.png" id="map">
-        <span 
-          v-for="(player, index) in players"
-          :key="'player-'+player.name+'-dot'"
-          v-bind:style="{
-            height: '15px',
-            width: '15px',
-            'background-color': colors[index],
-            'border-radius': '50%',
-            display: 'absolute',
-            top: answers[index].showX,
-            left: answers[index].showY,
-          }"
-        ></span>
       </div>
     </div>
   </div>
@@ -109,7 +97,8 @@
 <script>
 // const IMAGE_DIMENSION_X = 1792;
 // const IMAGE_DIMENSION_Y = 1536;
-const IMAGE_DIMENSION_RATIO = 0.7;
+
+// const IMAGE_DIMENSION_RATIO = 0.7;
 
 export default {
   name: 'Home',
@@ -150,8 +139,8 @@ export default {
   created() {
     const self = this;
     console.log("Starting Connection to WebSocket Server");
-    // this.ws = new WebSocket("wss://genshin-geoguesser-websocket.herokuapp.com/");
-    this.ws = new WebSocket("ws://localhost:3000");
+    this.ws = new WebSocket("wss://genshin-geoguesser-websocket.herokuapp.com/");
+    // this.ws = new WebSocket("ws://localhost:3000");
 
     this.ws.onopen = function (event) {
       console.log("Successfully connected to WebSocket.", event);
@@ -209,27 +198,19 @@ export default {
         isGM: isGM
       }));
       this.hasGM = isGM;
-      // this.players.push({
-      //   name: this.name,
-      //   score: 0
-      // });
       this.answers.push({
         x: null,
-        showX: 0,
         y: null,
-        showY: 0,
         score: 0
       });
       this.alertMessage = "";
     },
     updatePlayers(players) {
       this.players = players;
-      this.playerId = players.find(pl => pl.name == this.name).id;
+      // this.playerId = players.find(pl => pl.name == this.name).id;
       this.answers.push({
         x: null,
-        showX: 0,
         y: null,
-        showY: 0,
         score: 0
       });
     },
@@ -257,9 +238,7 @@ export default {
       for (let index = 0; index < this.players.length; index++) {
         this.answers.push({
         x: null,
-        showX: 0,
         y: null,
-        showY: 0,
         score: 0
       });
       }
@@ -274,10 +253,8 @@ export default {
     computeScore(distance) {
       return Math.round(5000 * Math.pow(0.998, distance));
     },
-    placePoint(x, y, index) {
-      let rect = document.getElementById('map').getBoundingClientRect();
-      this.answers[index].showX = rect.left + IMAGE_DIMENSION_RATIO * x;
-      this.answers[index].showY = rect.top + IMAGE_DIMENSION_RATIO * y;
+    resetValues() {
+      this.ws.send(JSON.stringify({ action: "RESET_VALUES" }));
     }
   },
   computed: {
