@@ -138,7 +138,8 @@ export default {
   },
   created() {
     console.log("Starting Connection to WebSocket Server");
-    this.ws = new WebSocket("ws://geo_guesser_worker.oniifgc.workers.dev");
+    // this.ws = new WebSocket("wss://genshin-geoguesser-websocket.herokuapp.com/");
+    this.ws = new WebSocket("ws://localhost:3000");
 
     this.ws.onopen = function (event) {
       console.log(event);
