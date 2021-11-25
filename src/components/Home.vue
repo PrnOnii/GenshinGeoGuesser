@@ -4,6 +4,7 @@
       {{ alertMessage }}
     </div>
     <h1 class="mt-3">Welcome to Genshin Impact GeoGuesser</h1>
+    <button v-on:click="test">Test</button>
     <div class="row">
       <div class="col-3 text-left">
         <h3>Players : </h3>
@@ -113,6 +114,10 @@ export default {
   name: 'Home',
   data() {
     return {
+      // WebSocket
+      ws: null,
+
+      // Gameplay
       alertMessage: "",
       newPlayer: "",
       players: [],
@@ -131,9 +136,26 @@ export default {
       ]
     }
   },
-  mounted() {
+  created() {
+    console.log("Starting Connection to WebSocket Server");
+    this.ws = new WebSocket("ws://geo_guesser_worker.oniifgc.workers.dev");
+
+    this.ws.onopen = function (event) {
+      console.log(event);
+      console.log("Successfully connected to WebSocket");
+    }
+
+    this.ws.onmessage = function (event) {
+      console.log(event.data);
+    }
   },
+  mounted() {
+    },
   methods: {
+    test() {
+      console.log(this.ws);
+      this.ws.send(JSON.stringify({ action: "increment" }));
+    },
     addPlayer(e) {
       this.players.push({
         name: e.value,
