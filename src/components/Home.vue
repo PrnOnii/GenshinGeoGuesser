@@ -13,12 +13,14 @@
             <i class="fas fa-user"></i> {{ player.name }} - Score : {{ player.score }}
           </li>
         </ul>
+        <div v-if="!hasJoinedRoom">
         <div class="col-12">
           Join Game :
           <input v-model="name" type="text" v-on:keypress.enter="addPlayer(false)">
         </div>
         <button v-on:click="addPlayer(false)" class="mr-2 mt-2">Join as Player</button>
         <button v-on:click="addPlayer(true)" v-if="!hasGM">Join as Game Master</button>
+        </div>
       </div>
       <div class="col">
         <h3>Submit scores</h3>
@@ -109,8 +111,8 @@ export default {
       timerId: null,
 
       // Own info
-      name: "",
-      playerId: 0,
+      name: null,
+      hasJoinedRoom: false,
 
       // Room info
       players: [],
@@ -139,8 +141,8 @@ export default {
   created() {
     const self = this;
     console.log("Starting Connection to WebSocket Server");
-    this.ws = new WebSocket("wss://genshin-geoguesser-websocket.herokuapp.com/");
-    // this.ws = new WebSocket("ws://localhost:3000");
+    // this.ws = new WebSocket("wss://genshin-geoguesser-websocket.herokuapp.com/");
+    this.ws = new WebSocket("ws://localhost:3000");
 
     this.ws.onopen = function (event) {
       console.log("Successfully connected to WebSocket.", event);
@@ -164,7 +166,8 @@ export default {
       console.log(data);
       switch (data.action) {
         case "STATUS_INIT":
-          this.setupStatus(data.data);
+          this.setupEnvironment(data.data.environment);
+          this.updatePlayers(data.data.players);
           break;
         case "KEEP_ALIVE":
           break;
@@ -174,15 +177,11 @@ export default {
         case "UPDATE_PLAYERS":
           this.updatePlayers(data.data);
           break;
-        case "UPDATE_PLAYER_ID":
-          this.updatePlayers(data.data);
-          this.playerId = data.data.find(pl => pl.name == this.name).id;
-          break;
         default:
           console.log("Unkown Websocket action...", data);
       }
     },
-    setupStatus(data) {
+    setupEnvironment(data) {
       this.hasGM = data.hasGM;
     },
     keepAlive() {
@@ -197,6 +196,7 @@ export default {
         name: this.name,
         isGM: isGM
       }));
+      this.hasJoinedRoom = true;
       this.hasGM = isGM;
       this.answers.push({
         x: null,
@@ -207,12 +207,11 @@ export default {
     },
     updatePlayers(players) {
       this.players = players;
-      // this.playerId = players.find(pl => pl.name == this.name).id;
-      this.answers.push({
-        x: null,
-        y: null,
-        score: 0
-      });
+      // this.answers.push({
+      //   x: null,
+      //   y: null,
+      //   score: 0
+      // });
     },
     startSubmitting() {
       if (this.players.length == 0) {
@@ -229,7 +228,7 @@ export default {
         let score = self.computeScore(distance);
         self.results[index] = {distance: distance, score: score};
         self.players[index].score += score;
-        self.placePoint(answer.x, answer.y, index);
+        // self.placePoint(answer.x, answer.y, index);
       });
     },
     newRound() {
