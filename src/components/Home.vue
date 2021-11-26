@@ -6,28 +6,94 @@
     <h1 class="mt-3">Welcome to Genshin Impact GeoGuesser</h1>
     <button v-on:click="resetValues()">Reset</button>
     <div class="row">
+      <!-- Players -->
       <div class="col-3 text-left">
         <h3>Players : </h3>
-        <ul>
+        <div v-if="gameMaster">
+          <h4>Current GameMaster : {{ this.gameMaster.name }}</h4>
+        </div>
+        <ul v-if="players.length > 0">
           <li v-for="(player, index) in players" :key="player+'-'+index" :style="'color: '+colors[index]">
             <i class="fas fa-user"></i> {{ player.name }} - Score : {{ player.score }}
+            <span v-if="player.answered">(has answered)</span>
+            <span v-on:click="removePlayer(player.id)" v-if="isGM">X</span>
           </li>
         </ul>
+
+        <!-- Join Game -->
         <div v-if="!hasJoinedRoom">
-        <div class="col-12">
-          Join Game :
-          <input v-model="name" type="text" v-on:keypress.enter="addPlayer(false)">
-        </div>
-        <button v-on:click="addPlayer(false)" class="mr-2 mt-2">Join as Player</button>
-        <button v-on:click="addPlayer(true)" v-if="!hasGM">Join as Game Master</button>
+          <div class="col-12">
+            Enter your name :
+            <input v-model="name" type="text" v-on:keypress.enter="addPlayer(false)">
+          </div>
+          <button v-on:click="addPlayer(false)" class="mr-2 mt-2" v-if="name">Join as Player</button>
+          <button v-on:click="addPlayer(true)" v-if="name && !gameMaster">Join as Game Master</button>
         </div>
       </div>
+
+      <!-- Gameplay -->
+      <div class="col-9">
+        <!-- Waiting Room -->
+        <div v-if="!gameStarted && hasJoinedRoom">
+          <!-- GM side -->
+          <div v-if="isGM">
+            <button v-on:click="startGame" class="btn btn-primary">
+              Start new Game
+            </button>
+          </div>
+          <!-- Player Side -->
+          <div v-if="!isGM">
+            Waiting for Game Master to start the game...
+          </div>
+        </div>
+
+        <div v-if="gameStarted">
+          <!-- Players gameplay -->
+          <div v-if="!isGM">
+            <h3>Click the image where you think the character is.</h3>
+            <div v-on:click="submitAnswer(e)" style="width: 1792px; height: 1536px; background-image: url('https://i.imgur.com/TdI4Bm1.png');"></div>
+          </div>
+          <!-- GM answers -->
+          <div v-if="isGM ">
+            <div class="row">
+              <h3>Good answer :</h3>
+              <div class="col-5">
+                <div class="input-group">
+                  <span class="input-group-text">X</span>
+                  <input type="number" class="form-control" v-model="goodAnswer.x">
+                </div>
+              </div>
+              <div class="col-5">
+                <div class="input-group">
+                  <span class="input-group-text">Y</span>
+                  <input type="number" class="form-control" v-model="goodAnswer.y">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <button 
+                type="submit"
+                class="btn btn-success mt-5"
+                v-on:click="endRound"
+                v-if="!resultPage"
+              >
+                Sumbit answer and end round
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+
+
+      <!-- OLD Gameplay -->
       <div class="col">
-        <h3>Submit scores</h3>
-        <button v-if="!submitting" v-on:click="startSubmitting" class="btn btn-primary">
+        <h3>A CHANGER</h3>
+        <button v-if="!roundStarted" v-on:click="startGame" class="btn btn-primary">
           Submit new results
         </button>
-        <div v-if="submitting">
+        <div v-if="roundStarted">
           <div v-for="(player, index) in players" :key="index+'-submit'" class="border-bottom">
             <div class="row">
               <div class="col-3" :style="'color:'+colors[index]">
@@ -45,7 +111,7 @@
                   <input type="number" class="form-control" v-model="answers[index].y">
                 </div>
               </div>
-              <div v-if="showResults" class="col">
+              <div v-if="resultPage" class="col">
                 Distance : {{ results[index].distance }}<br>
                 Score : {{ results[index].score }}
               </div>
@@ -73,13 +139,13 @@
               type="submit"
               class="btn btn-success mt-5"
               v-on:click="submitAnswers"
-              v-if="!showResults"
+              v-if="!resultPage"
             >
               Sumbit Results
             </button>
             <button
               class="btn btn-primary mt-5"
-              v-if="submitting&&showResults"
+              v-if="roundStarted&&resultPage"
               v-on:click="newRound"
             >
               New round
@@ -88,7 +154,7 @@
         </div>
       </div>
     </div>
-    <div class="row" v-show="showResults">
+    <div class="row" v-show="resultPage">
       <div class="col text-center mt-5">
         <img width="70%" src="https://i.imgur.com/TdI4Bm1.png" id="map">
       </div>
@@ -111,23 +177,24 @@ export default {
       timerId: null,
 
       // Own info
-      name: null,
       hasJoinedRoom: false,
+      name: null,
+      playerData: null,
+      isGM: false,
 
       // Room info
+      gameMaster: null,
       players: [],
       answers: [],
 
       // HTML & status
-      hasGM: false,
+      gameStarted: false,
+      roundStarted: false,
+      resultPage: false,
 
       // Gameplay
-      alertMessage: "",
-      newPlayer: "",
-      submitting: false,
-      showResults: false,
       goodAnswer: {x: 0, y: 0},
-      results: [],
+      alertMessage: "",
       colors: [
         "red",
         "blue",
@@ -162,27 +229,34 @@ export default {
   methods: {
     // WebSocket
     handleMessage(event) {
-      const data = JSON.parse(event.data);
-      console.log(data);
-      switch (data.action) {
+      const response = JSON.parse(event.data);
+      console.log(response);
+      switch (response.action) {
         case "STATUS_INIT":
-          this.setupEnvironment(data.data.environment);
-          this.updatePlayers(data.data.players);
+          this.setupEnvironment(response.data.environment);
+          this.gameMaster = response.data.gameMaster;
+          this.updatePlayers(response.data.players);
           break;
         case "KEEP_ALIVE":
           break;
         case "HAS_GM":
-          this.hasGM = true;
+          this.gameMaster = response.gameMaster;
           break;
         case "UPDATE_PLAYERS":
-          this.updatePlayers(data.data);
+          this.updatePlayers(response.data);
+          break;
+        case "ROUND_STARTED":
+          this.startRound();
+          break;
+        case "SHOW_RESULTS":
+          this.showResults(response.players, response.answers);
           break;
         default:
-          console.log("Unkown Websocket action...", data);
+          console.log("Unkown Websocket action...", response);
       }
     },
-    setupEnvironment(data) {
-      this.hasGM = data.hasGM;
+    setupEnvironment(environment) {
+      this.GMId = environment.GMId;
     },
     keepAlive() {
       if (this.ws.readyState == WebSocket.OPEN) {
@@ -197,42 +271,54 @@ export default {
         isGM: isGM
       }));
       this.hasJoinedRoom = true;
+      this.isGM = isGM;
       this.hasGM = isGM;
-      this.answers.push({
-        x: null,
-        y: null,
-        score: 0
-      });
-      this.alertMessage = "";
     },
     updatePlayers(players) {
       this.players = players;
-      // this.answers.push({
-      //   x: null,
-      //   y: null,
-      //   score: 0
-      // });
-    },
-    startSubmitting() {
-      if (this.players.length == 0) {
-        this.alertMessage = "Please start by adding new players";
-        return;
+      if (this.name) {
+        this.playerData = this.players.find(pl => pl.name == this.name);
       }
-      this.submitting = true;
     },
-    submitAnswers() {
-      this.showResults = true;
-      let self = this;
-      this.answers.forEach(function (answer, index) {
-        let distance = self.computeDistance(answer.x, answer.y);
-        let score = self.computeScore(distance);
-        self.results[index] = {distance: distance, score: score};
-        self.players[index].score += score;
-        // self.placePoint(answer.x, answer.y, index);
-      });
+    removePlayer(id) {
+      this.ws.send(JSON.stringify({
+        action: "REMOVE_PLAYER", playerId: id
+      }));
+    },
+    startGame() {
+      this.ws.send(JSON.stringify({
+        action: "START_GAME"
+      }));
+      this.gameStarted = true;
+    },
+    startRound() {
+      this.gameStarted = true;
+      this.roundStarted = true;
+    },
+    submitAnswer(e) {
+      console.log(e);
+      var rect = e.target.getBoundingClientRect();
+      var x = Math.round(e.clientX - rect.left);
+      var y = Math.round(e.clientY - rect.top);
+      this.ws.send(JSON.stringify({
+        action: "SUBMIT_ANSWER",
+        player: this.playerData,
+        answer: { x: x, y: y },
+      }));
+    },
+    endRound() {
+      this.ws.send(JSON.stringify({
+        action: "END_ROUND",
+        goodAnswer: this.goodAnswer
+      }));
+    },
+    showResults(players, answers) {
+      this.resultPage = true;
+      this.goodAnswer = {};
+      this.players = players;
+      this.answers = answers;
     },
     newRound() {
-      this.results = [];
       this.answers = [];
       for (let index = 0; index < this.players.length; index++) {
         this.answers.push({
@@ -241,7 +327,7 @@ export default {
         score: 0
       });
       }
-      this.showResults = false;
+      this.resultPage = false;
     },
     computeDistance(x, y) {
       let a = parseInt(this.goodAnswer.x) - parseInt(x);
