@@ -51,7 +51,7 @@
           <!-- Players gameplay -->
           <div v-if="!isGM">
             <h3>Click the image where you think the character is.</h3>
-            <div v-on:click="submitAnswer(e)" style="width: 1792px; height: 1536px; background-image: url('https://i.imgur.com/TdI4Bm1.png');"></div>
+            <div v-on:click="submitAnswer($event)" style="width: 1792px; height: 1536px; background-image: url('https://i.imgur.com/TdI4Bm1.png');"></div>
           </div>
           <!-- GM answers -->
           <div v-if="isGM">
