@@ -276,7 +276,7 @@ export default {
           this.showResults(response.players, response.answers);
           break;
         case "GAME_ENDED":
-          this.gameEnded();
+          this.resetValues();
           break;
         default:
           console.log("Unkown Websocket action...", response);
@@ -367,10 +367,10 @@ export default {
       this.ws.send(JSON.stringify({
         action: "END_GAME"
       }));
-      this.gameEnded();
-    },
-    gameEnded() {
       this.resetValues();
+    },
+    resetValues() {
+      this.ws.send(JSON.stringify({ action: "RESET_VALUES" }));
       this.players = [];
       this.hasJoinedRoom = false;
       this.name = null;
@@ -383,22 +383,8 @@ export default {
       this.roundStarted = false;
       this.resultPage = false;
       this.goodAnswer = {x: null, y: null};
-    },
-    computeDistance(x, y) {
-      let a = parseInt(this.goodAnswer.x) - parseInt(x);
-      let b = parseInt(this.goodAnswer.y) - parseInt(y);
-
-      return Math.round(Math.sqrt(a*a + b*b));
-    },
-    computeScore(distance) {
-      return Math.round(5000 * Math.pow(0.998, distance));
-    },
-    resetValues() {
-      this.ws.send(JSON.stringify({ action: "RESET_VALUES" }));
     }
-  },
-  computed: {
-  },
+  }
 };
 </script>
 
