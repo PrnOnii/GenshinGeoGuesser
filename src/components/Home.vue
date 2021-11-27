@@ -50,36 +50,60 @@
         <div v-if="gameStarted">
           <!-- Players gameplay -->
           <div v-if="!isGM">
+
+          <div v-if="roundStarted">
             <h3>Click the image where you think the character is.</h3>
             <div v-on:click="submitAnswer($event)" style="width: 1792px; height: 1536px; background-image: url('https://i.imgur.com/TdI4Bm1.png');"></div>
           </div>
+          <div v-if="resultPage">
+            List of answers
+            <div v-for="(player, index) in players" :key="player+'-'+index+'result'">
+              <i class="fas fa-user"></i> {{ player.name }} - Answers : {{ answers[index].x }}, {{ answers[index].y }}, distance : {{ answers[index].distance }}, 
+               => Score : {{ answers[index].score }}.
+            </div>
+          </div>
+
+          </div>
           <!-- GM answers -->
           <div v-if="isGM">
-            <div class="row">
-              <h3>Good answer :</h3>
-              <div class="col-5">
-                <div class="input-group">
-                  <span class="input-group-text">X</span>
-                  <input type="number" class="form-control" v-model="goodAnswer.x">
+            <div v-if="roundStarted">
+              <div class="row">
+                <h3>Good answer :</h3>
+                <div class="col-5">
+                  <div class="input-group">
+                    <span class="input-group-text">X</span>
+                    <input type="number" class="form-control" v-model="goodAnswer.x">
+                  </div>
+                </div>
+                <div class="col-5">
+                  <div class="input-group">
+                    <span class="input-group-text">Y</span>
+                    <input type="number" class="form-control" v-model="goodAnswer.y">
+                  </div>
                 </div>
               </div>
-              <div class="col-5">
-                <div class="input-group">
-                  <span class="input-group-text">Y</span>
-                  <input type="number" class="form-control" v-model="goodAnswer.y">
-                </div>
+              <div class="row">
+                <button 
+                  type="submit"
+                  class="btn btn-success mt-5"
+                  v-on:click="endRound"
+                  v-if="!resultPage"
+                >
+                  Sumbit answer and end round
+                </button>
               </div>
             </div>
-            <div class="row">
-              <button 
-                type="submit"
-                class="btn btn-success mt-5"
-                v-on:click="endRound"
-                v-if="!resultPage"
-              >
-                Sumbit answer and end round
-              </button>
+
+            <div v-if="resultPage">
+            List of answers
+            <div v-for="(player, index) in players" :key="player+'-'+index+'result'">
+              <i class="fas fa-user"></i> {{ player.name }} - Answers : {{ answers[index].x }}, {{ answers[index].y }}, distance : {{ answers[index].distance }}, 
+               => Score : {{ answers[index].score }}.
             </div>
+
+            <button v-on:click="newRound">New Round</button>
+            <button v-on:click="endGame">End Game</button>
+          </div>
           </div>
         </div>
       </div>
@@ -251,6 +275,9 @@ export default {
         case "SHOW_RESULTS":
           this.showResults(response.players, response.answers);
           break;
+        case "GAME_ENDED":
+          this.gameEnded();
+          break;
         default:
           console.log("Unkown Websocket action...", response);
       }
@@ -289,7 +316,6 @@ export default {
       this.ws.send(JSON.stringify({
         action: "START_GAME"
       }));
-      this.gameStarted = true;
     },
     startRound() {
       this.gameStarted = true;
@@ -301,6 +327,7 @@ export default {
       var x = Math.round(e.clientX - rect.left);
       var y = Math.round(e.clientY - rect.top);
       console.log("Sending X Y", x, y);
+      console.log(this.playerData);
       this.ws.send(JSON.stringify({
         action: "SUBMIT_ANSWER",
         player: this.playerData,
@@ -308,19 +335,21 @@ export default {
       }));
     },
     endRound() {
+      console.log("Sending good Answer", this.goodAnswer);
       this.ws.send(JSON.stringify({
         action: "END_ROUND",
         goodAnswer: this.goodAnswer
       }));
     },
     showResults(players, answers) {
+      this.roundStarted = false;
       this.resultPage = true;
-      this.goodAnswer = {};
       this.players = players;
       this.answers = answers;
     },
     newRound() {
       this.answers = [];
+      this.goodAnswer = {};
       for (let index = 0; index < this.players.length; index++) {
         this.answers.push({
         x: null,
@@ -329,6 +358,31 @@ export default {
       });
       }
       this.resultPage = false;
+      this.roundStarted = true;
+      this.ws.send(JSON.stringify({
+        action: "NEW_ROUND"
+      }));
+    },
+    endGame() {
+      this.ws.send(JSON.stringify({
+        action: "END_GAME"
+      }));
+      this.gameEnded();
+    },
+    gameEnded() {
+      this.resetValues();
+      this.players = [];
+      this.hasJoinedRoom = false;
+      this.name = null;
+      this.playerData = null;
+      this.isGM = false;
+      this.gameMaster = null;
+      this.players = [];
+      this.answers = [];
+      this.gameStarted = false;
+      this.roundStarted = false;
+      this.resultPage = false;
+      this.goodAnswer = {x: null, y: null};
     },
     computeDistance(x, y) {
       let a = parseInt(this.goodAnswer.x) - parseInt(x);
