@@ -54,7 +54,7 @@
             <div v-on:click="submitAnswer(e)" style="width: 1792px; height: 1536px; background-image: url('https://i.imgur.com/TdI4Bm1.png');"></div>
           </div>
           <!-- GM answers -->
-          <div v-if="isGM ">
+          <div v-if="isGM">
             <div class="row">
               <h3>Good answer :</h3>
               <div class="col-5">
@@ -88,7 +88,7 @@
 
 
       <!-- OLD Gameplay -->
-      <div class="col">
+      <!-- <div class="col">
         <h3>A CHANGER</h3>
         <button v-if="!roundStarted" v-on:click="startGame" class="btn btn-primary">
           Submit new results
@@ -152,7 +152,7 @@
             </button>
           </div>
         </div>
-      </div>
+      </div> -->
     </div>
     <div class="row" v-show="resultPage">
       <div class="col text-center mt-5">
