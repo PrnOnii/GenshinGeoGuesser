@@ -243,7 +243,7 @@ export default {
           this.gameMaster = response.gameMaster;
           break;
         case "UPDATE_PLAYERS":
-          this.updatePlayers(response.data);
+          this.updatePlayers(response.players);
           break;
         case "ROUND_STARTED":
           this.startRound();
@@ -277,7 +277,7 @@ export default {
     updatePlayers(players) {
       this.players = players;
       if (this.name) {
-        this.playerData = this.players.find(pl => pl.name == this.name);
+        this.playerData = players.find(pl => pl.name == this.name);
       }
     },
     removePlayer(id) {
@@ -300,6 +300,7 @@ export default {
       var rect = e.target.getBoundingClientRect();
       var x = Math.round(e.clientX - rect.left);
       var y = Math.round(e.clientY - rect.top);
+      console.log("Sending X Y", x, y);
       this.ws.send(JSON.stringify({
         action: "SUBMIT_ANSWER",
         player: this.playerData,
