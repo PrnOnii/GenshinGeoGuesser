@@ -214,7 +214,7 @@ export default {
       if (this.ws.readyState == WebSocket.OPEN) {
         this.ws.send(JSON.stringify({action: "KEEP_ALIVE"}));
       }
-      this.timerId = setTimeout(this.keepAlive, 60000);
+      this.timerId = setTimeout(this.keepAlive, 30000);
     },
     addPlayer(isGM) {
       this.ws.send(JSON.stringify({
